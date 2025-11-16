@@ -11,6 +11,30 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
 - **Type-safe**: Full type hints and Pydantic validation
 - **Enterprise-ready**: Production-grade error handling and logging
 
+### Production Hardening 🛡️
+
+**Automatic Rate Limiting:**
+- **Login operations**: 90 requests/minute (safety margin under 100/min hard limit)
+- **General API calls**: 20 requests/second (conservative limit)
+- **Per-market requests**: 5 requests/second per market ID
+- **Automatic cleanup**: Hourly cleanup of old rate limiters to prevent memory leaks
+
+**Request Weight Validation:**
+- Validates all requests against Betfair's 200-point weight limit
+- Market catalogue: Calculates weight based on projections (COMPETITION, EVENT, RUNNER_DESCRIPTION, etc.)
+- Market prices: Calculates weight for price data (EX_BEST_OFFERS, EX_TRADED, etc.)
+- Automatic validation before API calls to prevent TOO_MUCH_DATA errors
+
+**Intelligent Error Handling:**
+- **Classified errors**: INVALID_SESSION_TOKEN, TOO_MANY_REQUESTS, TOO_MUCH_DATA, THROTTLED
+- **Exponential backoff**: Automatic retry with 1-10 second delays for rate limit errors
+- **Session refresh**: Automatic re-authentication on session expiry
+- **Detailed logging**: Structured error logging with context for debugging
+
+**Background Tasks:**
+- **Keep-alive loop**: Sends keep-alive every 30 minutes to prevent session timeout
+- **Rate limiter cleanup**: Hourly cleanup of unused per-market rate limiters
+
 ## Quick Start
 
 ### Prerequisites
@@ -184,12 +208,17 @@ This project includes comprehensive research documentation:
 
 ## Development Roadmap
 
-This is Phase 1 (MVP) implementation. Future phases planned:
+**Current Status**: Phase 1 (MVP) + Production Hardening ✅
 
+**Completed:**
+- ✅ **Phase 1**: Core MCP server with 9 tools (account, events, markets)
+- ✅ **Production Hardening**: Rate limiting, weight validation, error handling
+
+**Future Phases:**
 - **Phase 2**: Streaming API integration for real-time updates
 - **Phase 3**: Advanced analytics and value betting tools
 - **Phase 4**: Responsible gambling monitoring
-- **Phase 5**: Production hardening and observability
+- **Phase 5**: Full observability (Prometheus, Grafana, Kubernetes deployment)
 
 See [BETFAIR_MCP_BRAINSTORM_PLAN.md](BETFAIR_MCP_BRAINSTORM_PLAN.md) for details.
 
@@ -293,6 +322,8 @@ MIT License - see LICENSE file for details
 Built with:
 - [FastMCP](https://github.com/jlowin/fastmcp) - Pythonic MCP framework
 - [betfairlightweight](https://github.com/liampauling/betfair) - Official Betfair Python SDK
+- [aiolimiter](https://github.com/mjpieters/aiolimiter) - Async rate limiting
+- [tenacity](https://github.com/jd/tenacity) - Retry logic with exponential backoff
 - [Model Context Protocol](https://modelcontextprotocol.io/) - Anthropic's AI integration standard
 
 ---

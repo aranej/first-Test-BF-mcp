@@ -12,6 +12,10 @@ from typing import Any, Dict, List, Optional
 from betfairlightweight.exceptions import BetfairError
 from betfairlightweight.filters import market_filter, price_projection
 
+from ..rate_limiter import get_rate_limiter
+from ..weight_calculator import MarketDataWeightCalculator
+from ..error_handling import classify_betfair_error, log_api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,11 +58,26 @@ async def list_market_catalogue(
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info(
             f"Fetching market catalogue (event_id={event_id}, "
             f"event_type_id={event_type_id}, max_results={max_results})"
         )
+
+        # Market projections requested
+        market_projection = ["COMPETITION", "EVENT", "RUNNER_DESCRIPTION", "MARKET_DESCRIPTION"]
+
+        # Validate weight for the request
+        weight = MarketDataWeightCalculator.calculate_market_catalogue_weight(
+            num_markets=max_results,
+            market_projection=market_projection,
+        )
+        MarketDataWeightCalculator.validate_weight(weight, "list_market_catalogue")
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Build filter
         filter_params = {}
@@ -78,7 +97,7 @@ async def list_market_catalogue(
             client.betting.list_market_catalogue,
             filter=filter_obj,
             max_results=max_results,
-            market_projection=["COMPETITION", "EVENT", "RUNNER_DESCRIPTION", "MARKET_DESCRIPTION"],
+            market_projection=market_projection,
         )
 
         result = []
@@ -111,8 +130,9 @@ async def list_market_catalogue(
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch market catalogue: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "list_market_catalogue")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching market catalogue: {e}")
         raise
@@ -156,12 +176,27 @@ async def get_market_prices(
     if len(market_ids) > 250:
         raise ValueError("Maximum 250 market IDs allowed per request")
 
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info(f"Fetching prices for {len(market_ids)} markets")
 
+        # Price data requested
+        price_data = ["EX_BEST_OFFERS", "EX_TRADED"]
+
+        # Validate weight for the request
+        weight = MarketDataWeightCalculator.calculate_market_book_weight(
+            num_markets=len(market_ids),
+            price_data=price_data,
+        )
+        MarketDataWeightCalculator.validate_weight(weight, "get_market_prices")
+
+        # Apply rate limiting for batch market request
+        await rate_limiter.acquire_markets(market_ids)
+
         # Create price projection for full depth
         price_proj = price_projection(
-            price_data=["EX_BEST_OFFERS", "EX_TRADED"],
+            price_data=price_data,
             virtualise=True,
         )
 
@@ -221,8 +256,9 @@ async def get_market_prices(
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch market prices: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "get_market_prices")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching market prices: {e}")
         raise

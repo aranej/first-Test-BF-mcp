@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .auth import BetfairSessionManager, create_session_manager_from_env
+from .rate_limiter import get_rate_limiter, cleanup_rate_limiter_task
 from .tools import account, events, markets
 
 # Load environment variables
@@ -50,6 +51,10 @@ async def startup():
     logger.info("Starting Betfair MCP server...")
 
     try:
+        # Initialize rate limiter
+        rate_limiter = get_rate_limiter()
+        logger.info("Rate limiter initialized")
+
         # Create session manager from environment variables
         session_manager = create_session_manager_from_env()
         logger.info("Session manager created")
@@ -58,9 +63,12 @@ async def startup():
         await asyncio.to_thread(session_manager.ensure_logged_in)
         logger.info("Successfully logged in to Betfair")
 
-        # Start background keep-alive task
+        # Start background tasks
         asyncio.create_task(keep_alive_loop())
         logger.info("Keep-alive loop started")
+
+        asyncio.create_task(cleanup_rate_limiter_task())
+        logger.info("Rate limiter cleanup task started")
 
     except Exception as e:
         logger.error(f"Failed to initialize Betfair session: {e}")
@@ -91,8 +99,10 @@ async def keep_alive_loop():
     Background task to send periodic keep-alive requests.
 
     This prevents the Betfair session from timing out due to inactivity.
-    Keep-alive is sent every 30 minutes.
+    Keep-alive is sent every 30 minutes with rate limiting.
     """
+    rate_limiter = get_rate_limiter()
+
     while True:
         try:
             # Wait 30 minutes
@@ -100,6 +110,8 @@ async def keep_alive_loop():
 
             if session_manager:
                 logger.debug("Sending keep-alive request")
+                # Rate limit keep-alive (counts as login operation)
+                await rate_limiter.acquire_login()
                 await asyncio.to_thread(session_manager.keep_alive)
         except Exception as e:
             logger.error(f"Error in keep-alive loop: {e}")

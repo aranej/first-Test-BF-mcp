@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Optional
 from betfairlightweight.exceptions import BetfairError
 from betfairlightweight.filters import market_filter
 
+from ..rate_limiter import get_rate_limiter
+from ..error_handling import classify_betfair_error, log_api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,8 +38,13 @@ async def list_event_types(client: Any) -> List[Dict[str, Any]]:
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info("Fetching event types")
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Create a filter for all markets
         filter_obj = market_filter()
@@ -59,8 +67,9 @@ async def list_event_types(client: Any) -> List[Dict[str, Any]]:
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch event types: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "list_event_types")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching event types: {e}")
         raise
@@ -96,11 +105,16 @@ async def list_events(
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info(
             f"Fetching events (event_type_id={event_type_id}, "
             f"competition_id={competition_id}, text_query={text_query})"
         )
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Build filter
         filter_params = {}
@@ -132,8 +146,9 @@ async def list_events(
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch events: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "list_events")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching events: {e}")
         raise
@@ -161,8 +176,13 @@ async def list_competitions(
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info(f"Fetching competitions (event_type_id={event_type_id})")
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Build filter
         filter_params = {}
@@ -189,8 +209,9 @@ async def list_competitions(
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch competitions: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "list_competitions")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching competitions: {e}")
         raise

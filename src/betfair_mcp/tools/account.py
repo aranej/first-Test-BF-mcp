@@ -11,6 +11,9 @@ from typing import Any, Dict
 
 from betfairlightweight.exceptions import BetfairError
 
+from ..rate_limiter import get_rate_limiter
+from ..error_handling import classify_betfair_error, log_api_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,8 +39,13 @@ async def get_account_balance(client: Any) -> Dict[str, Any]:
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info("Fetching account balance")
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Call the sync API in a thread pool
         funds = await asyncio.to_thread(client.account.get_account_funds)
@@ -55,8 +63,9 @@ async def get_account_balance(client: Any) -> Dict[str, Any]:
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch account balance: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "get_account_balance")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching account balance: {e}")
         raise
@@ -82,8 +91,13 @@ async def get_account_details(client: Any) -> Dict[str, Any]:
     Raises:
         BetfairError: If the API request fails
     """
+    rate_limiter = get_rate_limiter()
+
     try:
         logger.info("Fetching account details")
+
+        # Apply rate limiting
+        await rate_limiter.acquire_general()
 
         # Call the sync API in a thread pool
         details = await asyncio.to_thread(client.account.get_account_details)
@@ -102,8 +116,9 @@ async def get_account_details(client: Any) -> Dict[str, Any]:
         return result
 
     except BetfairError as e:
-        logger.error(f"Failed to fetch account details: {e}")
-        raise
+        classified_error = classify_betfair_error(e)
+        log_api_error(classified_error, "get_account_details")
+        raise classified_error
     except Exception as e:
         logger.error(f"Unexpected error fetching account details: {e}")
         raise
