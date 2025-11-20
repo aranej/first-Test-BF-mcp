@@ -241,19 +241,27 @@ async def betfair_list_event_types() -> dict:
 
     Returns:
         dict: Response with keys:
-            - summary: Markdown-formatted table (str)
+            - summary: Markdown-formatted table (str, may be truncated)
             - data: List of event types (list[dict])
                 - event_type_id: Unique identifier for the sport (str)
                 - event_type_name: Human-readable name, e.g., "Soccer" (str)
                 - market_count: Number of markets available (int)
-            - count: Total number of event types (int)
+            - metadata: Response metadata (dict)
+                - total: Total number of items (int)
+                - returned: Number of items in data field (int)
+                - summary_truncated: Whether summary was truncated (bool)
     """
     client = get_client()
     data = await events.list_event_types(client)
+    summary = format_event_types(data)
     return {
-        "summary": format_event_types(data),
+        "summary": summary,
         "data": data,
-        "count": len(data),
+        "metadata": {
+            "total": len(data),
+            "returned": len(data),
+            "summary_truncated": len(summary) >= 4000,
+        },
     }
 
 
@@ -280,7 +288,7 @@ async def betfair_list_events(params: ListEventsInput) -> dict:
 
     Returns:
         dict: Response with keys:
-            - summary: Markdown-formatted summary (str)
+            - summary: Markdown-formatted summary (str, may be truncated)
             - data: List of events (list[dict])
                 - event_id: Unique event identifier (str)
                 - event_name: Event name, e.g., "Man Utd vs Liverpool" (str)
@@ -288,7 +296,20 @@ async def betfair_list_events(params: ListEventsInput) -> dict:
                 - open_date: When the event starts in ISO format (str)
                 - country_code: Country code for the event (str)
                 - market_count: Number of markets for this event (int)
-            - count: Total number of events (int)
+            - metadata: Response metadata (dict)
+                - total: Total number of items (int)
+                - returned: Number of items in data field (int)
+                - summary_truncated: Whether summary was truncated (bool)
+
+    Example:
+        # List all soccer events
+        betfair_list_events({"event_type_id": "1"})
+
+        # Search for specific team
+        betfair_list_events({"text_query": "Liverpool"})
+
+        # Filter by competition
+        betfair_list_events({"event_type_id": "1", "competition_id": "12345"})
     """
     client = get_client()
     data = await events.list_events(
@@ -297,10 +318,15 @@ async def betfair_list_events(params: ListEventsInput) -> dict:
         competition_id=params.competition_id,
         text_query=params.text_query,
     )
+    summary = format_events(data)
     return {
-        "summary": format_events(data),
+        "summary": summary,
         "data": data,
-        "count": len(data),
+        "metadata": {
+            "total": len(data),
+            "returned": len(data),
+            "summary_truncated": len(summary) >= 4000,
+        },
     }
 
 
@@ -325,22 +351,30 @@ async def betfair_list_competitions(params: ListCompetitionsInput) -> dict:
 
     Returns:
         dict: Response with keys:
-            - summary: Markdown-formatted table (str)
+            - summary: Markdown-formatted table (str, may be truncated)
             - data: List of competitions (list[dict])
                 - competition_id: Unique competition identifier (str)
                 - competition_name: Competition name, e.g., "Premier League" (str)
                 - market_count: Number of markets in this competition (int)
-            - count: Total number of competitions (int)
+            - metadata: Response metadata (dict)
+                - total: Total number of items (int)
+                - returned: Number of items in data field (int)
+                - summary_truncated: Whether summary was truncated (bool)
     """
     client = get_client()
     data = await events.list_competitions(
         client,
         event_type_id=params.event_type_id,
     )
+    summary = format_competitions(data)
     return {
-        "summary": format_competitions(data),
+        "summary": summary,
         "data": data,
-        "count": len(data),
+        "metadata": {
+            "total": len(data),
+            "returned": len(data),
+            "summary_truncated": len(summary) >= 4000,
+        },
     }
 
 
@@ -373,7 +407,7 @@ async def betfair_list_market_catalogue(params: ListMarketCatalogueInput) -> dic
 
     Returns:
         dict: Response with keys:
-            - summary: Markdown-formatted summary (str)
+            - summary: Markdown-formatted summary (str, may be truncated)
             - data: List of markets (list[dict])
                 - market_id: Unique market identifier (str)
                 - market_name: Market name, e.g., "Match Odds" (str)
@@ -386,7 +420,30 @@ async def betfair_list_market_catalogue(params: ListMarketCatalogueInput) -> dic
                     - selection_id: Unique runner identifier (str)
                     - runner_name: Runner name, e.g., "Manchester United" (str)
                     - sort_priority: Display order priority (int)
-            - count: Total number of markets (int)
+            - metadata: Response metadata (dict)
+                - total: Total number of items (int)
+                - returned: Number of items in data field (int)
+                - max_results: Value of max_results parameter used (int)
+                - summary_truncated: Whether summary was truncated (bool)
+
+    Example:
+        # Get match odds for a specific event
+        betfair_list_market_catalogue({
+            "event_id": "31234567",
+            "market_type_codes": ["MATCH_ODDS"]
+        })
+
+        # Get all soccer markets (first 50)
+        betfair_list_market_catalogue({
+            "event_type_id": "1",
+            "max_results": 50
+        })
+
+        # Get over/under markets for Premier League
+        betfair_list_market_catalogue({
+            "competition_id": "12345",
+            "market_type_codes": ["OVER_UNDER_25", "OVER_UNDER_15"]
+        })
     """
     client = get_client()
     data = await markets.list_market_catalogue(
@@ -397,10 +454,16 @@ async def betfair_list_market_catalogue(params: ListMarketCatalogueInput) -> dic
         market_type_codes=params.market_type_codes,
         max_results=params.max_results,
     )
+    summary = format_market_catalogue(data)
     return {
-        "summary": format_market_catalogue(data),
+        "summary": summary,
         "data": data,
-        "count": len(data),
+        "metadata": {
+            "total": len(data),
+            "returned": len(data),
+            "max_results": params.max_results,
+            "summary_truncated": len(summary) >= 4000,
+        },
     }
 
 
@@ -425,7 +488,7 @@ async def betfair_get_market_prices(params: GetMarketPricesInput) -> dict:
 
     Returns:
         dict: Response with keys:
-            - summary: Markdown-formatted odds table (str)
+            - summary: Markdown-formatted odds table (str, may be truncated)
             - data: List of market prices (list[dict])
                 - market_id: Market identifier (str)
                 - status: Market status: OPEN, SUSPENDED, or CLOSED (str)
@@ -441,14 +504,42 @@ async def betfair_get_market_prices(params: GetMarketPricesInput) -> dict:
                     - lay_prices: Available lay prices to bet against (list[dict])
                         - price: Decimal odds (float)
                         - size: Amount available at this price (float)
-            - count: Total number of markets (int)
+            - metadata: Response metadata (dict)
+                - total: Total number of markets (int)
+                - returned: Number of markets in data field (int)
+                - requested: Number of market IDs requested (int)
+                - summary_truncated: Whether summary was truncated (bool)
+
+    Example:
+        # Get prices for a single market
+        betfair_get_market_prices({"market_ids": ["1.234567890"]})
+
+        # Get prices for multiple markets
+        betfair_get_market_prices({
+            "market_ids": [
+                "1.234567890",
+                "1.234567891",
+                "1.234567892"
+            ]
+        })
+
+        # Monitor live odds (call periodically)
+        # Note: This tool has idempotentHint=False as prices change in real-time
+        prices = betfair_get_market_prices({"market_ids": ["1.234567890"]})
+        # prices['data'][0]['runners'][0]['back_prices'] contains latest back odds
     """
     client = get_client()
     data = await markets.get_market_prices(client, params.market_ids)
+    summary = format_market_prices(data)
     return {
-        "summary": format_market_prices(data),
+        "summary": summary,
         "data": data,
-        "count": len(data),
+        "metadata": {
+            "total": len(data),
+            "returned": len(data),
+            "requested": len(params.market_ids),
+            "summary_truncated": len(summary) >= 4000,
+        },
     }
 
 
