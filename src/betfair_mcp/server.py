@@ -136,8 +136,15 @@ def get_client():
 # ACCOUNT TOOLS
 # ============================================================================
 
-@mcp.tool()
-async def get_account_balance() -> dict:
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_get_account_balance() -> dict:
     """
     Get current account balance and available funds.
 
@@ -157,8 +164,15 @@ async def get_account_balance() -> dict:
     return await account.get_account_balance(client)
 
 
-@mcp.tool()
-async def get_account_details() -> dict:
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_get_account_details() -> dict:
     """
     Get account details including personal information and settings.
 
@@ -183,8 +197,15 @@ async def get_account_details() -> dict:
 # EVENT TOOLS
 # ============================================================================
 
-@mcp.tool()
-async def list_event_types() -> list:
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_list_event_types() -> list:
     """
     List all available event types (sports).
 
@@ -201,8 +222,15 @@ async def list_event_types() -> list:
     return await events.list_event_types(client)
 
 
-@mcp.tool()
-async def list_events(
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_list_events(
     event_type_id: str = "",
     competition_id: str = "",
     text_query: str = "",
@@ -236,8 +264,15 @@ async def list_events(
     )
 
 
-@mcp.tool()
-async def list_competitions(event_type_id: str = "") -> list:
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_list_competitions(event_type_id: str = "") -> list:
     """
     List competitions (leagues/tournaments).
 
@@ -264,8 +299,15 @@ async def list_competitions(event_type_id: str = "") -> list:
 # MARKET TOOLS
 # ============================================================================
 
-@mcp.tool()
-async def list_market_catalogue(
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+async def betfair_list_market_catalogue(
     event_id: str = "",
     event_type_id: str = "",
     competition_id: str = "",
@@ -310,8 +352,15 @@ async def list_market_catalogue(
     )
 
 
-@mcp.tool()
-async def get_market_prices(market_ids: list[str]) -> list:
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    }
+)
+async def betfair_get_market_prices(market_ids: list[str]) -> list:
     """
     Get current prices and odds for specified markets.
 
